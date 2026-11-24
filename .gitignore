@@ -1,0 +1,7 @@
+.env
+candidaturas.db
+historial_enviados.csv
+CV_Jaime_Peran_Alcantarilla.pdf
+__pycache__/
+*.py[cod]
+*.sqlite*S

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel de candidaturas · Jaime</title>
+<style>
+:root{--bg:#0f1226;--card:#1a1e3d;--tx:#eef0ff;--mut:#9aa0cf;--a:#7c5cff;--b:#00d4ff;--c:#ff5ca8;--ok:#2ee59d;--warn:#ffb84d}
+@media(prefers-color-scheme:light){:root{--bg:#f1f2ff;--card:#fff;--tx:#1b1f3b;--mut:#666c9a}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,sans-serif;color:var(--tx);background:var(--bg);min-height:100vh;overflow-x:hidden}
+.blob{position:fixed;border-radius:50%;filter:blur(90px);opacity:.35;z-index:-1;animation:flota 14s ease-in-out infinite}
+.b1{width:420px;height:420px;background:var(--a);top:-120px;left:-80px}.b2{width:380px;height:380px;background:var(--b);bottom:-100px;right:-60px;animation-delay:-5s}.b3{width:300px;height:300px;background:var(--c);top:40%;left:55%;animation-delay:-9s}
+@keyframes flota{50%{transform:translate(40px,-50px) scale(1.15)}}
+header{padding:28px 5vw 8px;display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between}
+h1{margin:0;font-size:clamp(1.5rem,4vw,2.3rem);background:linear-gradient(90deg,var(--b),var(--a),var(--c));background-size:200%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:grad 6s linear infinite}
+@keyframes grad{to{background-position:200% 0}}
+.stats{display:flex;gap:12px;flex-wrap:wrap}.stat{background:var(--card);padding:10px 16px;border-radius:14px;box-shadow:0 6px 24px #0003;text-align:center;min-width:90px}
+.stat b{display:block;font-size:1.4rem}.stat span{font-size:.75rem;color:var(--mut)}
+nav{padding:10px 5vw;display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:0;padding:8px 16px;border-radius:99px;background:var(--card);color:var(--tx);cursor:pointer;font-weight:600;transition:.25s}
+.chip:hover{transform:translateY(-2px)}.chip.on{background:linear-gradient(90deg,var(--a),var(--c));color:#fff;box-shadow:0 6px 18px #7c5cff55}
+main{padding:10px 5vw 60px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:18px}
+.card{background:var(--card);border-radius:20px;padding:18px;box-shadow:0 10px 30px #0003;position:relative;overflow:hidden;animation:entra .5s both;transition:.3s}
+.card:hover{transform:translateY(-4px) rotate(-.2deg);box-shadow:0 16px 40px #7c5cff44}
+.card::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:linear-gradient(90deg,var(--b),var(--a),var(--c))}
+@keyframes entra{from{opacity:0;transform:translateY(24px) scale(.97)}}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.score{flex:none;min-width:44px;text-align:center;padding:6px 10px;border-radius:12px;font-weight:800;background:linear-gradient(135deg,var(--ok),var(--b));color:#06122b}
+.t{font-weight:700;margin:2px 0}.e{color:var(--mut);font-size:.85rem}
+textarea,input{width:100%;margin-top:10px;background:#0000001f;border:1px solid #8884;border-radius:12px;color:var(--tx);padding:10px;font:inherit}
+textarea{min-height:170px;resize:vertical;font-size:.88rem}
+textarea:focus,input:focus{outline:2px solid var(--a)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{border:0;border-radius:12px;padding:9px 14px;font-weight:700;cursor:pointer;color:#fff;text-decoration:none;font-size:.85rem;transition:.2s}
+.btn:hover{transform:scale(1.06)}.btn:active{transform:scale(.96)}
+.send{background:linear-gradient(90deg,var(--a),var(--c))}.sec{background:#5560a8}.del{background:#e5484d}.ap{background:#17a673}
+.tag{font-size:.7rem;padding:3px 9px;border-radius:99px;background:#8883;margin-left:6px}
+.tag.enviada{background:var(--ok);color:#06122b}.tag.descartada{background:#e5484d55}.tag.aplicada{background:var(--warn);color:#2b1a00}
+#toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,120px);background:var(--card);padding:12px 20px;border-radius:14px;box-shadow:0 10px 30px #0006;transition:.4s;font-weight:600}
+#toast.on{transform:translate(-50%,0)}.vacio{grid-column:1/-1;text-align:center;color:var(--mut);padding:60px}
+</style></head><body>
+<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+<header><h1>🚀 Panel de candidaturas</h1>
+<div class="stats"><div class="stat"><b id="n-nueva">0</b><span>por revisar</span></div><div class="stat"><b id="n-hoy">0</b><span id="lim">enviadas hoy</span></div><div class="stat"><b id="n-env">0</b><span>enviadas total</span></div></div></header>
+<nav id="nav"></nav><main id="lista"></main><div id="toast"></div>
+<script>
+let datos=[],filtro="nueva";
+const FILTROS=[["nueva","✨ Por revisar"],["con-email","✉️ Con email"],["aplicada","📝 Aplicadas"],["enviada","✅ Enviadas"],["descartada","🗑️ Descartadas"],["todas","Todas"]];
+const $=s=>document.querySelector(s);
+const toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),3200)};
+async function api(ruta,d){const r=await fetch(ruta,d?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}:{});return r.json()}
+async function cargar(){const r=await api("/api/ofertas");datos=r.ofertas;
+ $("#n-nueva").textContent=datos.filter(o=>o.estado=="nueva").length;$("#n-hoy").textContent=r.hoy;$("#lim").textContent="enviadas hoy (máx "+r.max+")";
+ $("#n-env").textContent=datos.filter(o=>o.estado=="enviada").length;pinta()}
+function pinta(){const nav=$("#nav");nav.replaceChildren(...FILTROS.map(([k,t])=>{const b=document.createElement("button");b.className="chip"+(k==filtro?" on":"");b.textContent=t;b.onclick=()=>{filtro=k;pinta()};return b}));
+ const l=$("#lista");l.replaceChildren();
+ const v=datos.filter(o=>filtro=="todas"||(filtro=="con-email"?(o.destino&&o.estado=="nueva"):o.estado==filtro));
+ if(!v.length){const d=document.createElement("div");d.className="vacio";d.textContent="Nada por aquí 🎉 Ejecuta: python empleo.py buscar";l.append(d);return}
+ v.forEach((o,i)=>l.append(tarjeta(o,i)))}
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function tarjeta(o,i){const c=el("div","card");c.style.animationDelay=Math.min(i*60,600)+"ms";
+ const top=el("div","top"),izq=el("div");const t=el("div","t",o.titulo);if(o.estado!="nueva")t.append(el("span","tag "+o.estado,o.estado));
+ izq.append(t,el("div","e",[o.empresa||"Empresa sin indicar",o.fuente].join(" · ")));top.append(izq,el("div","score",o.score));
+ const ta=el("textarea");ta.value=o.borrador||"";const em=el("input");em.placeholder="Email de destino (si no hay, aplica desde la web)";em.value=o.destino||"";
+ const bt=el("div","btns");
+ const b=(cls,txt,fn)=>{const x=el("button","btn "+cls,txt);x.onclick=fn;bt.append(x);return x};
+ const guarda=est=>api("/api/guardar",{id:o.id,borrador:ta.value,destino:em.value,estado:est}).then(cargar);
+ if(o.estado!="enviada"){b("send","✉️ Enviar con CV",async()=>{if(!em.value)return toast("Añade un email de destino");if(!confirm("¿Enviar a "+em.value+"?"))return;
+   const r=await api("/api/enviar",{id:o.id,borrador:ta.value,destino:em.value});toast(r.resultado=="ok"?"¡Enviado! 🚀":r.resultado);cargar()})}
+ b("sec","📋 Copiar",()=>navigator.clipboard.writeText(ta.value).then(()=>toast("Copiado")));
+ if(o.url&&o.url.startsWith("http")){const a=el("a","btn sec","🔗 Abrir oferta");a.href=o.url;a.target="_blank";a.rel="noopener";bt.append(a)}
+ if(o.estado=="nueva"){b("ap","📝 Ya apliqué",()=>guarda("aplicada"));b("del","🗑️",()=>guarda("descartada"))}
+ c.append(top,ta,em,bt);return c}
+cargar();
+</script></body></html>
